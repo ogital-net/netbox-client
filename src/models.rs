@@ -2909,6 +2909,251 @@ pub struct MACAddress {
     pub last_updated: Option<json_ts::JsonTimestamp>,
 }
 
+// ── Extras types ─────────────────────────────────────────────────────────────
+
+/// Condensed custom-field choice set as returned in `CustomField` responses.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct BriefCustomFieldChoiceSet {
+    /// Unique numeric ID.
+    pub id: i64,
+    /// Canonical URL for this choice set.
+    pub url: String,
+    /// Human-readable representation.
+    pub display: String,
+    /// Choice set name.
+    pub name: String,
+    /// Short description.
+    #[serde(default)]
+    pub description: String,
+    /// Number of choices in this set.
+    pub choices_count: i64,
+}
+
+/// A custom field definition in NetBox.
+///
+/// Custom fields extend the built-in data model by attaching user-defined
+/// attributes to specific object types.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CustomField {
+    /// Unique numeric ID.
+    pub id: i64,
+    /// Canonical URL for this custom field.
+    pub url: String,
+    /// URL for the detail view.
+    pub display_url: String,
+    /// Human-readable representation.
+    pub display: String,
+    /// List of content types this custom field is assigned to (e.g. `["dcim.site"]`).
+    pub object_types: Vec<String>,
+    /// The type of data this custom field holds.
+    #[serde(rename = "type")]
+    pub r#type: StatusValue,
+    /// For `object` / `multiobject` types, the related content type (e.g. `dcim.site`).
+    pub related_object_type: Option<String>,
+    /// Computed data type string (read-only).
+    pub data_type: String,
+    /// Internal field name.
+    pub name: String,
+    /// Name of the field as displayed to users.
+    #[serde(default)]
+    pub label: String,
+    /// Custom fields within the same group will be displayed together.
+    #[serde(default)]
+    pub group_name: String,
+    /// Short description.
+    #[serde(default)]
+    pub description: String,
+    /// Whether this field is required when creating or editing objects.
+    #[serde(default)]
+    pub required: bool,
+    /// Whether the value of this field must be unique for the assigned object.
+    #[serde(default)]
+    pub unique: bool,
+    /// Weighting for search. Lower values are considered more important. Zero means ignored.
+    #[serde(default)]
+    pub search_weight: i64,
+    /// Loose matches any instance of a given string; exact matches the entire field.
+    pub filter_logic: Option<StatusValue>,
+    /// Specifies whether the custom field is displayed in the UI.
+    pub ui_visible: Option<StatusValue>,
+    /// Specifies whether the custom field value can be edited in the UI.
+    pub ui_editable: Option<StatusValue>,
+    /// Whether this value is replicated when cloning objects.
+    #[serde(default)]
+    pub is_cloneable: bool,
+    /// Default value for the field (must be a JSON value).
+    pub default: Option<crate::JsonValue>,
+    /// Filter the object selection choices using a query_params dict (a JSON value).
+    pub related_object_filter: Option<crate::JsonValue>,
+    /// Fields with higher weights appear lower in a form.
+    #[serde(default)]
+    pub weight: i64,
+    /// Minimum allowed value (for numeric fields).
+    pub validation_minimum: Option<f64>,
+    /// Maximum allowed value (for numeric fields).
+    pub validation_maximum: Option<f64>,
+    /// Regular expression to enforce on text field values.
+    #[serde(default)]
+    pub validation_regex: String,
+    /// Choice set associated with this field (for `select` / `multiselect` types).
+    pub choice_set: Option<BriefCustomFieldChoiceSet>,
+    /// Owner object.
+    pub owner: Option<BriefOwner>,
+    /// Freeform comments.
+    #[serde(default)]
+    pub comments: String,
+    /// Date/time this object was created.
+    pub created: Option<json_ts::JsonTimestamp>,
+    /// Date/time this object was last updated.
+    pub last_updated: Option<json_ts::JsonTimestamp>,
+}
+
+/// Request body for creating or replacing a custom field (POST / PUT).
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct CustomFieldRequest {
+    /// List of content types this custom field applies to (e.g. `["dcim.site"]`).
+    pub object_types: Vec<String>,
+    /// The type of data this custom field holds (e.g. `text`, `integer`, `select`).
+    #[serde(rename = "type")]
+    pub r#type: String,
+    /// Internal field name.
+    pub name: String,
+    /// For `object` / `multiobject` types, the related content type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub related_object_type: Option<String>,
+    /// Name of the field as displayed to users.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Custom fields within the same group will be displayed together.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    /// Short description.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Whether this field is required when creating or editing objects.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required: Option<bool>,
+    /// Whether the value of this field must be unique for the assigned object.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unique: Option<bool>,
+    /// Weighting for search. Lower values are considered more important. Zero means ignored.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search_weight: Option<i64>,
+    /// Filter logic: `disabled`, `loose`, or `exact`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter_logic: Option<String>,
+    /// UI visibility: `always`, `if-set`, or `hidden`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_visible: Option<String>,
+    /// UI editability: `yes`, `no`, or `hidden`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_editable: Option<String>,
+    /// Whether this value is replicated when cloning objects.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_cloneable: Option<bool>,
+    /// Default value for the field (must be a JSON value).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default: Option<crate::JsonValue>,
+    /// Filter the object selection choices using a query_params dict (a JSON value).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub related_object_filter: Option<crate::JsonValue>,
+    /// Display weight — fields with higher weights appear lower in a form.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<i64>,
+    /// Minimum allowed value (for numeric fields).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_minimum: Option<f64>,
+    /// Maximum allowed value (for numeric fields).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_maximum: Option<f64>,
+    /// Regular expression to enforce on text field values.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_regex: Option<String>,
+    /// Choice set ID (for `select` / `multiselect` types).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub choice_set: Option<i64>,
+    /// Owner ID.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<i64>,
+    /// Freeform comments.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comments: Option<String>,
+}
+
+/// Request body for partially updating a custom field (PATCH).
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct CustomFieldPatchRequest {
+    /// List of content types this custom field applies to (e.g. `["dcim.site"]`).
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub object_types: Vec<String>,
+    /// The type of data this custom field holds (e.g. `text`, `integer`, `select`).
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    /// Internal field name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// For `object` / `multiobject` types, the related content type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub related_object_type: Option<String>,
+    /// Name of the field as displayed to users.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Custom fields within the same group will be displayed together.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    /// Short description.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Whether this field is required when creating or editing objects.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required: Option<bool>,
+    /// Whether the value of this field must be unique for the assigned object.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unique: Option<bool>,
+    /// Weighting for search. Lower values are considered more important. Zero means ignored.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search_weight: Option<i64>,
+    /// Filter logic: `disabled`, `loose`, or `exact`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter_logic: Option<String>,
+    /// UI visibility: `always`, `if-set`, or `hidden`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_visible: Option<String>,
+    /// UI editability: `yes`, `no`, or `hidden`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_editable: Option<String>,
+    /// Whether this value is replicated when cloning objects.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_cloneable: Option<bool>,
+    /// Default value for the field (must be a JSON value).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default: Option<crate::JsonValue>,
+    /// Filter the object selection choices using a query_params dict (a JSON value).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub related_object_filter: Option<crate::JsonValue>,
+    /// Display weight — fields with higher weights appear lower in a form.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<i64>,
+    /// Minimum allowed value (for numeric fields).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_minimum: Option<f64>,
+    /// Maximum allowed value (for numeric fields).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_maximum: Option<f64>,
+    /// Regular expression to enforce on text field values.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_regex: Option<String>,
+    /// Choice set ID (for `select` / `multiselect` types).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub choice_set: Option<i64>,
+    /// Owner ID.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<i64>,
+    /// Freeform comments.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comments: Option<String>,
+}
+
 /// Request body for creating or replacing a MAC address (POST / PUT).
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MACAddressRequest {

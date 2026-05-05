@@ -41,7 +41,7 @@ x-netbox-env: &netbox-env
   SUPERUSER_PASSWORD: admin
   SUPERUSER_API_TOKEN: "0123456789abcdef0123456789abcdef01234567"
   GRAPHQL_ENABLED: "true"
-  WEBHOOKS_ENABLED: "false"
+  WEBHOOKS_ENABLED: "true"
   METRICS_ENABLED: "false"
 
 services:

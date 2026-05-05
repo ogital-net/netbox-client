@@ -63,6 +63,7 @@ pub use models::*;
 
 pub mod circuits;
 pub mod dcim;
+pub mod extras;
 pub mod ipam;
 
 pub type Result<T> = std::result::Result<T, Error>;
