@@ -1,0 +1,115 @@
+# NetBox development stack for integration tests
+#
+# Usage:
+#   docker compose -f compose/docker-compose.yml up -d
+#   docker compose -f compose/docker-compose.yml down -v   # destroy volumes
+#
+# Write the following to .env in the repo root before running examples / integration tests:
+#   NETBOX_URL=http://localhost:8080
+#   NETBOX_TOKEN=0123456789abcdef0123456789abcdef01234567
+#
+# NetBox UI: http://localhost:8080  (admin / admin)
+
+x-netbox-env: &netbox-env
+  # --- Database ---
+  DB_HOST: postgres
+  DB_NAME: netbox
+  DB_USER: netbox
+  DB_PASSWORD: netbox
+  # --- Queue (valkey db 0) ---
+  REDIS_HOST: valkey
+  REDIS_PORT: "6379"
+  REDIS_DATABASE: "0"
+  REDIS_PASSWORD: ""
+  REDIS_SSL: "false"
+  REDIS_INSECURE_SKIP_TLS_VERIFY: "false"
+  # --- Cache (valkey db 1) ---
+  REDIS_CACHE_HOST: valkey
+  REDIS_CACHE_PORT: "6379"
+  REDIS_CACHE_DATABASE: "1"
+  REDIS_CACHE_PASSWORD: ""
+  REDIS_CACHE_SSL: "false"
+  REDIS_CACHE_INSECURE_SKIP_TLS_VERIFY: "false"
+  # --- NetBox ---
+  ALLOWED_HOSTS: "*"
+  CORS_ORIGIN_ALLOW_ALL: "true"
+  SECRET_KEY: "dev-secret-key-not-for-production-use-only-local-testing"
+  SKIP_SUPERUSER: "false"
+  SUPERUSER_NAME: admin
+  SUPERUSER_EMAIL: admin@example.com
+  SUPERUSER_PASSWORD: admin
+  SUPERUSER_API_TOKEN: "0123456789abcdef0123456789abcdef01234567"
+  GRAPHQL_ENABLED: "true"
+  WEBHOOKS_ENABLED: "false"
+  METRICS_ENABLED: "false"
+
+services:
+  postgres:
+    image: docker.io/postgres:17-alpine
+    environment:
+      POSTGRES_DB: netbox
+      POSTGRES_USER: netbox
+      POSTGRES_PASSWORD: netbox
+    volumes:
+      - netbox-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -q -d netbox -U netbox
+      start_period: 20s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: docker.io/valkey/valkey:9.0-alpine
+    command: valkey-server --appendonly yes
+    volumes:
+      - netbox-valkey:/data
+    healthcheck:
+      test: '[ $$(valkey-cli ping) = ''PONG'' ]'
+      start_period: 5s
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  netbox: &netbox
+    image: docker.io/netboxcommunity/netbox:v4.5-latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    environment:
+      <<: *netbox-env
+    user: "unit:root"
+    ports:
+      - "8080:8080"
+    volumes:
+      - netbox-media:/opt/netbox/netbox/media:rw
+    healthcheck:
+      test: curl -sf http://localhost:8080/api/ || exit 1
+      start_period: 120s
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  netbox-worker:
+    <<: *netbox
+    depends_on:
+      netbox:
+        condition: service_healthy
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - rqworker
+    ports: []
+    healthcheck:
+      test: ps aux | grep -v grep | grep -q rqworker || exit 1
+      start_period: 20s
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  netbox-postgres:
+  netbox-valkey:
+  netbox-media:
