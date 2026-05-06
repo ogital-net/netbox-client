@@ -3233,3 +3233,76 @@ pub struct MACAddressPatchRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_fields: Option<crate::JsonValue>,
 }
+
+// ── Image attachments ────────────────────────────────────────────────────────
+
+/// An image file attached to a NetBox object.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ImageAttachment {
+    /// Unique numeric ID.
+    pub id: i64,
+    /// Canonical URL for this image attachment.
+    pub url: String,
+    /// Human-readable representation.
+    pub display: String,
+    /// Content-type of the parent object (e.g. `dcim.site`).
+    pub object_type: String,
+    /// Primary key of the parent object.
+    pub object_id: i64,
+    /// The parent object. Exact shape varies by content type.
+    pub parent: Option<crate::JsonValue>,
+    /// Optional display name for this attachment.
+    #[serde(default)]
+    pub name: String,
+    /// URL of the stored image.
+    pub image: String,
+    /// Short description.
+    #[serde(default)]
+    pub description: String,
+    /// Pixel height of the image.
+    pub image_height: i64,
+    /// Pixel width of the image.
+    pub image_width: i64,
+    /// Date/time this object was created.
+    pub created: Option<json_ts::JsonTimestamp>,
+    /// Date/time this object was last updated.
+    pub last_updated: Option<json_ts::JsonTimestamp>,
+}
+
+/// Request body for creating or replacing an image attachment (POST / PUT).
+///
+/// Image data is uploaded as multipart form data; use `image_filename` to supply
+/// the name reported to the server (e.g. `"photo.png"`).
+#[derive(Debug, Clone)]
+pub struct ImageAttachmentUpload {
+    /// Content-type of the parent object (e.g. `dcim.site`).
+    pub object_type: String,
+    /// Primary key of the parent object.
+    pub object_id: i64,
+    /// Raw image bytes to upload.
+    pub image: Vec<u8>,
+    /// File name reported in the multipart upload (e.g. `"photo.png"`).
+    pub image_filename: String,
+    /// Optional display name for this attachment.
+    pub name: Option<String>,
+    /// Short description.
+    pub description: Option<String>,
+}
+
+/// Request body for partially updating an image attachment (PATCH).
+///
+/// Only set the fields you want to change. Supply `image` as `Some((bytes, filename))`
+/// to replace the stored image; leave it `None` to keep the existing one.
+#[derive(Debug, Clone, Default)]
+pub struct ImageAttachmentPatchUpload {
+    /// Content-type of the parent object (e.g. `dcim.site`).
+    pub object_type: Option<String>,
+    /// Primary key of the parent object.
+    pub object_id: Option<i64>,
+    /// Replacement image as `(bytes, filename)`.
+    pub image: Option<(Vec<u8>, String)>,
+    /// Optional display name for this attachment.
+    pub name: Option<String>,
+    /// Short description.
+    pub description: Option<String>,
+}

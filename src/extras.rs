@@ -28,7 +28,10 @@ use futures_core::stream::BoxStream;
 use futures_util::stream::try_unfold;
 
 use crate::RequestBuilderExt as _;
-use crate::{CustomField, CustomFieldPatchRequest, CustomFieldRequest, NetboxClient, Paginated};
+use crate::{
+    CustomField, CustomFieldPatchRequest, CustomFieldRequest, ImageAttachment,
+    ImageAttachmentPatchUpload, ImageAttachmentUpload, NetboxClient, Paginated,
+};
 
 const PAGE_SIZE: u32 = 50;
 
@@ -49,6 +52,21 @@ pub struct CustomFieldFilter {
     pub r#type: Vec<String>,
 }
 
+/// Filters for the [`NetboxClient::image_attachments_list`] / [`NetboxClient::image_attachments`] endpoints.
+#[derive(Debug, Clone, Default)]
+pub struct ImageAttachmentFilter {
+    /// Free-text search.
+    pub q: Option<String>,
+    /// Limit results to these IDs.
+    pub id: Vec<i64>,
+    /// Filter by attachment name (exact).
+    pub name: Vec<String>,
+    /// Filter by content type of the parent object (e.g. `dcim.site`).
+    pub object_type: Option<String>,
+    /// Filter by parent object ID.
+    pub object_id: Vec<i64>,
+}
+
 impl CustomFieldFilter {
     fn as_query(&self) -> Vec<(String, String)> {
         let mut p = Vec::new();
@@ -66,6 +84,28 @@ impl CustomFieldFilter {
         }
         for v in &self.r#type {
             p.push(("type".into(), v.clone()));
+        }
+        p
+    }
+}
+
+impl ImageAttachmentFilter {
+    fn as_query(&self) -> Vec<(String, String)> {
+        let mut p = Vec::new();
+        if let Some(q) = &self.q {
+            p.push(("q".into(), q.clone()));
+        }
+        for v in &self.id {
+            p.push(("id".into(), v.to_string()));
+        }
+        for v in &self.name {
+            p.push(("name".into(), v.clone()));
+        }
+        if let Some(ot) = &self.object_type {
+            p.push(("object_type".into(), ot.clone()));
+        }
+        for v in &self.object_id {
+            p.push(("object_id".into(), v.to_string()));
         }
         p
     }
@@ -234,6 +274,244 @@ impl NetboxClient {
     /// Returns `Error::Api` with status 404 if the custom field does not exist.
     pub async fn custom_field_delete(&self, id: i64) -> crate::Result<()> {
         let url = format!("{}/api/extras/custom-fields/{id}/", self.base_url);
+        let resp = self
+            .http
+            .delete(&url)
+            .header("Authorization", format!("Token {}", self.token))
+            .send()
+            .await
+            .map_err(crate::Error::Http)?;
+        if resp.status().is_success() {
+            Ok(())
+        } else {
+            let status = resp.status();
+            let bytes = resp.bytes().await.map_err(crate::Error::Http)?;
+            let body = crate::json::from_slice::<crate::ApiError>(&bytes).unwrap_or_default();
+            Err(crate::Error::Api { status, body })
+        }
+    }
+
+    // ── Image attachments ─────────────────────────────────────────────────────
+
+    /// Returns a single page of image attachments.
+    ///
+    /// Maps to `GET /api/extras/image-attachments/`
+    /// (`operationId`: `extras_image_attachments_list`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error on HTTP or deserialization failure.
+    pub async fn image_attachments_list(
+        &self,
+        limit: u32,
+        offset: u32,
+        filter: &ImageAttachmentFilter,
+    ) -> crate::Result<Paginated<ImageAttachment>> {
+        let url = format!("{}/api/extras/image-attachments/", self.base_url);
+        let mut query = filter.as_query();
+        query.push(("limit".into(), limit.to_string()));
+        query.push(("offset".into(), offset.to_string()));
+        self.http
+            .get(&url)
+            .header("Authorization", format!("Token {}", self.token))
+            .query(&query)
+            .send_json::<Paginated<ImageAttachment>>()
+            .await
+    }
+
+    /// Streams all image attachments matching `filter`, auto-paginating.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # async fn example() -> netbox_client::Result<()> {
+    /// use futures_util::TryStreamExt as _;
+    /// use netbox_client::extras::ImageAttachmentFilter;
+    /// let client = netbox_client::NetboxClient::new("https://netbox.example.com", "token")?;
+    /// let filter = ImageAttachmentFilter {
+    ///     object_type: Some("dcim.site".into()),
+    ///     ..Default::default()
+    /// };
+    /// let all: Vec<_> = client.image_attachments(&filter).try_collect().await?;
+    /// # Ok(()) }
+    /// ```
+    #[must_use]
+    pub fn image_attachments<'a>(
+        &'a self,
+        filter: &'a ImageAttachmentFilter,
+    ) -> BoxStream<'a, crate::Result<ImageAttachment>> {
+        Box::pin(try_unfold(
+            (Some(0u32), VecDeque::<ImageAttachment>::new()),
+            move |(next_offset, mut buf)| async move {
+                if let Some(item) = buf.pop_front() {
+                    return Ok(Some((item, (next_offset, buf))));
+                }
+                let Some(offset) = next_offset else {
+                    return Ok(None);
+                };
+                let page = self
+                    .image_attachments_list(PAGE_SIZE, offset, filter)
+                    .await?;
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
+                let mut buf: VecDeque<ImageAttachment> = page.results.into_iter().collect();
+                match buf.pop_front() {
+                    Some(item) => Ok(Some((item, (new_next, buf)))),
+                    None => Ok(None),
+                }
+            },
+        ))
+    }
+
+    /// Returns a single image attachment by ID.
+    ///
+    /// Maps to `GET /api/extras/image-attachments/{id}/`
+    /// (`operationId`: `extras_image_attachments_retrieve`).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::Api` with status 404 if the attachment does not exist.
+    pub async fn image_attachment(&self, id: i64) -> crate::Result<ImageAttachment> {
+        let url = format!("{}/api/extras/image-attachments/{id}/", self.base_url);
+        self.http
+            .get(&url)
+            .header("Authorization", format!("Token {}", self.token))
+            .send_json::<ImageAttachment>()
+            .await
+    }
+
+    /// Creates a new image attachment.
+    ///
+    /// Maps to `POST /api/extras/image-attachments/`
+    /// (`operationId`: `extras_image_attachments_create`).
+    ///
+    /// The image is uploaded as `multipart/form-data`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::Api` with status 400 on validation failure.
+    pub async fn image_attachment_create(
+        &self,
+        body: &ImageAttachmentUpload,
+    ) -> crate::Result<ImageAttachment> {
+        let url = format!("{}/api/extras/image-attachments/", self.base_url);
+        let part = reqwest::multipart::Part::bytes(body.image.clone())
+            .file_name(body.image_filename.clone())
+            .mime_str("application/octet-stream")
+            .map_err(crate::Error::Http)?;
+        let mut form = reqwest::multipart::Form::new()
+            .text("object_type", body.object_type.clone())
+            .text("object_id", body.object_id.to_string())
+            .part("image", part);
+        if let Some(n) = &body.name {
+            form = form.text("name", n.clone());
+        }
+        if let Some(d) = &body.description {
+            form = form.text("description", d.clone());
+        }
+        self.http
+            .post(&url)
+            .header("Authorization", format!("Token {}", self.token))
+            .multipart(form)
+            .send_json::<ImageAttachment>()
+            .await
+    }
+
+    /// Replaces an image attachment (full update).
+    ///
+    /// Maps to `PUT /api/extras/image-attachments/{id}/`
+    /// (`operationId`: `extras_image_attachments_update`).
+    ///
+    /// The image is uploaded as `multipart/form-data`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::Api` with status 400 on validation failure.
+    pub async fn image_attachment_update(
+        &self,
+        id: i64,
+        body: &ImageAttachmentUpload,
+    ) -> crate::Result<ImageAttachment> {
+        let url = format!("{}/api/extras/image-attachments/{id}/", self.base_url);
+        let part = reqwest::multipart::Part::bytes(body.image.clone())
+            .file_name(body.image_filename.clone())
+            .mime_str("application/octet-stream")
+            .map_err(crate::Error::Http)?;
+        let mut form = reqwest::multipart::Form::new()
+            .text("object_type", body.object_type.clone())
+            .text("object_id", body.object_id.to_string())
+            .part("image", part);
+        if let Some(n) = &body.name {
+            form = form.text("name", n.clone());
+        }
+        if let Some(d) = &body.description {
+            form = form.text("description", d.clone());
+        }
+        self.http
+            .put(&url)
+            .header("Authorization", format!("Token {}", self.token))
+            .multipart(form)
+            .send_json::<ImageAttachment>()
+            .await
+    }
+
+    /// Partially updates an image attachment.
+    ///
+    /// Maps to `PATCH /api/extras/image-attachments/{id}/`
+    /// (`operationId`: `extras_image_attachments_partial_update`).
+    ///
+    /// Only the fields set on `body` are sent. Supply `image` as
+    /// `Some((bytes, filename))` to replace the stored image.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::Api` with status 400 on validation failure.
+    pub async fn image_attachment_patch(
+        &self,
+        id: i64,
+        body: &ImageAttachmentPatchUpload,
+    ) -> crate::Result<ImageAttachment> {
+        let url = format!("{}/api/extras/image-attachments/{id}/", self.base_url);
+        let mut form = reqwest::multipart::Form::new();
+        if let Some(ot) = &body.object_type {
+            form = form.text("object_type", ot.clone());
+        }
+        if let Some(oid) = body.object_id {
+            form = form.text("object_id", oid.to_string());
+        }
+        if let Some((bytes, filename)) = &body.image {
+            let part = reqwest::multipart::Part::bytes(bytes.clone())
+                .file_name(filename.clone())
+                .mime_str("application/octet-stream")
+                .map_err(crate::Error::Http)?;
+            form = form.part("image", part);
+        }
+        if let Some(n) = &body.name {
+            form = form.text("name", n.clone());
+        }
+        if let Some(d) = &body.description {
+            form = form.text("description", d.clone());
+        }
+        self.http
+            .patch(&url)
+            .header("Authorization", format!("Token {}", self.token))
+            .multipart(form)
+            .send_json::<ImageAttachment>()
+            .await
+    }
+
+    /// Deletes an image attachment.
+    ///
+    /// Maps to `DELETE /api/extras/image-attachments/{id}/`
+    /// (`operationId`: `extras_image_attachments_destroy`).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::Api` with status 404 if the attachment does not exist.
+    pub async fn image_attachment_delete(&self, id: i64) -> crate::Result<()> {
+        let url = format!("{}/api/extras/image-attachments/{id}/", self.base_url);
         let resp = self
             .http
             .delete(&url)
@@ -562,6 +840,247 @@ mod tests {
 
         let client = NetboxClient::new(server.uri(), "secret").unwrap();
         let err = client.custom_field_delete(999).await.unwrap_err();
+        match err {
+            crate::Error::Api { status, .. } => {
+                assert_eq!(status, reqwest::StatusCode::NOT_FOUND);
+            }
+            other => panic!("expected Error::Api, got {other:?}"),
+        }
+    }
+
+    // ── Image attachments ─────────────────────────────────────────────────────
+
+    fn image_attachment_json(id: i64) -> serde_json::Value {
+        serde_json::json!({
+            "id": id,
+            "url": format!("https://nb.example.com/api/extras/image-attachments/{id}/"),
+            "display": format!("photo_{id}.png"),
+            "object_type": "dcim.site",
+            "object_id": 1,
+            "parent": {"id": 1, "name": "Test Site"},
+            "name": format!("photo_{id}"),
+            "image": format!("https://nb.example.com/media/image-attachments/photo_{id}.png"),
+            "description": "",
+            "image_height": 100,
+            "image_width": 200,
+            "created": null,
+            "last_updated": null
+        })
+    }
+
+    #[tokio::test]
+    async fn image_attachments_list_returns_page() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/extras/image-attachments/"))
+            .and(header("Authorization", "Token secret"))
+            .and(query_param("limit", "50"))
+            .and(query_param("offset", "0"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "count": 1,
+                "next": null,
+                "previous": null,
+                "results": [image_attachment_json(1)]
+            })))
+            .mount(&server)
+            .await;
+
+        let client = NetboxClient::new(server.uri(), "secret").unwrap();
+        let page = client
+            .image_attachments_list(50, 0, &super::ImageAttachmentFilter::default())
+            .await
+            .unwrap();
+        assert_eq!(page.count, 1);
+        assert_eq!(page.results[0].object_type, "dcim.site");
+    }
+
+    #[tokio::test]
+    async fn image_attachments_list_applies_filter() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/extras/image-attachments/"))
+            .and(query_param("object_type", "dcim.site"))
+            .and(query_param("object_id", "1"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "count": 1,
+                "next": null,
+                "previous": null,
+                "results": [image_attachment_json(3)]
+            })))
+            .mount(&server)
+            .await;
+
+        let client = NetboxClient::new(server.uri(), "secret").unwrap();
+        let filter = super::ImageAttachmentFilter {
+            object_type: Some("dcim.site".into()),
+            object_id: vec![1],
+            ..Default::default()
+        };
+        let page = client.image_attachments_list(50, 0, &filter).await.unwrap();
+        assert_eq!(page.results[0].id, 3);
+    }
+
+    #[tokio::test]
+    async fn image_attachments_stream_walks_two_pages() {
+        use futures_util::TryStreamExt as _;
+
+        let server = MockServer::start().await;
+
+        let page1: Vec<_> = (1..=50).map(image_attachment_json).collect();
+        let page2: Vec<_> = (51..=55).map(image_attachment_json).collect();
+
+        Mock::given(method("GET"))
+            .and(path("/api/extras/image-attachments/"))
+            .and(query_param("offset", "0"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "count": 55,
+                "next": "https://nb.example.com/api/extras/image-attachments/?limit=50&offset=50",
+                "previous": null,
+                "results": page1
+            })))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path("/api/extras/image-attachments/"))
+            .and(query_param("offset", "50"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "count": 55,
+                "next": null,
+                "previous": null,
+                "results": page2
+            })))
+            .mount(&server)
+            .await;
+
+        let client = NetboxClient::new(server.uri(), "secret").unwrap();
+        let all: Vec<crate::ImageAttachment> = client
+            .image_attachments(&super::ImageAttachmentFilter::default())
+            .try_collect()
+            .await
+            .unwrap();
+        assert_eq!(all.len(), 55);
+    }
+
+    #[tokio::test]
+    async fn image_attachment_retrieve_returns_attachment() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/extras/image-attachments/7/"))
+            .and(header("Authorization", "Token secret"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(image_attachment_json(7)))
+            .mount(&server)
+            .await;
+
+        let client = NetboxClient::new(server.uri(), "secret").unwrap();
+        let att = client.image_attachment(7).await.unwrap();
+        assert_eq!(att.id, 7);
+        assert_eq!(att.image_width, 200);
+    }
+
+    #[tokio::test]
+    async fn image_attachment_retrieve_returns_error_on_404() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/extras/image-attachments/999/"))
+            .respond_with(
+                ResponseTemplate::new(404)
+                    .set_body_json(serde_json::json!({"detail": "Not found."})),
+            )
+            .mount(&server)
+            .await;
+
+        let client = NetboxClient::new(server.uri(), "secret").unwrap();
+        let err = client.image_attachment(999).await.unwrap_err();
+        match err {
+            crate::Error::Api { status, .. } => {
+                assert_eq!(status, reqwest::StatusCode::NOT_FOUND);
+            }
+            other => panic!("expected Error::Api, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn image_attachment_create_returns_attachment() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/api/extras/image-attachments/"))
+            .and(header("Authorization", "Token secret"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(image_attachment_json(10)))
+            .mount(&server)
+            .await;
+
+        let client = NetboxClient::new(server.uri(), "secret").unwrap();
+        let upload = crate::ImageAttachmentUpload {
+            object_type: "dcim.site".into(),
+            object_id: 1,
+            image: b"\x89PNG\r\n".to_vec(),
+            image_filename: "test.png".into(),
+            name: Some("test photo".into()),
+            description: None,
+        };
+        let att = client.image_attachment_create(&upload).await.unwrap();
+        assert_eq!(att.id, 10);
+    }
+
+    #[tokio::test]
+    async fn image_attachment_create_returns_error_on_400() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/api/extras/image-attachments/"))
+            .respond_with(
+                ResponseTemplate::new(400)
+                    .set_body_json(serde_json::json!({"detail": "Invalid image."})),
+            )
+            .mount(&server)
+            .await;
+
+        let client = NetboxClient::new(server.uri(), "secret").unwrap();
+        let upload = crate::ImageAttachmentUpload {
+            object_type: "dcim.site".into(),
+            object_id: 1,
+            image: b"not-an-image".to_vec(),
+            image_filename: "bad.bin".into(),
+            name: None,
+            description: None,
+        };
+        let err = client.image_attachment_create(&upload).await.unwrap_err();
+        match err {
+            crate::Error::Api { status, .. } => {
+                assert_eq!(status, reqwest::StatusCode::BAD_REQUEST);
+            }
+            other => panic!("expected Error::Api, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn image_attachment_delete_ok_on_204() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path("/api/extras/image-attachments/12/"))
+            .and(header("Authorization", "Token secret"))
+            .respond_with(ResponseTemplate::new(204))
+            .mount(&server)
+            .await;
+
+        let client = NetboxClient::new(server.uri(), "secret").unwrap();
+        client.image_attachment_delete(12).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn image_attachment_delete_returns_error_on_404() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path("/api/extras/image-attachments/999/"))
+            .respond_with(
+                ResponseTemplate::new(404)
+                    .set_body_json(serde_json::json!({"detail": "Not found."})),
+            )
+            .mount(&server)
+            .await;
+
+        let client = NetboxClient::new(server.uri(), "secret").unwrap();
+        let err = client.image_attachment_delete(999).await.unwrap_err();
         match err {
             crate::Error::Api { status, .. } => {
                 assert_eq!(status, reqwest::StatusCode::NOT_FOUND);
