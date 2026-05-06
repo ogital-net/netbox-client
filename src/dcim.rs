@@ -24,11 +24,11 @@ use std::collections::VecDeque;
 use futures_core::stream::BoxStream;
 use futures_util::stream::try_unfold;
 
+use crate::RequestBuilderExt as _;
 use crate::{
     Interface, InterfacePatchRequest, InterfaceRequest, MACAddress, MACAddressPatchRequest,
     MACAddressRequest, NetboxClient, Paginated, Site, SitePatchRequest, SiteRequest,
 };
-use crate::RequestBuilderExt as _;
 
 const PAGE_SIZE: u32 = 50;
 
@@ -295,7 +295,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.sites_list(PAGE_SIZE, offset, filter).await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<Site> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -444,8 +447,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.interfaces_list(PAGE_SIZE, offset, filter).await?;
-                let new_next =
-                    page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<Interface> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -593,9 +598,7 @@ impl NetboxClient {
                         Some(o) => o,
                         None => return Ok(None),
                     };
-                    let page = self
-                        .mac_addresses_list(PAGE_SIZE, offset, &filter)
-                        .await?;
+                    let page = self.mac_addresses_list(PAGE_SIZE, offset, &filter).await?;
                     let new_offset = if page.next.is_some() {
                         Some(offset + PAGE_SIZE)
                     } else {
@@ -632,10 +635,7 @@ impl NetboxClient {
     /// # Errors
     ///
     /// Returns an error on HTTP or deserialization failure.
-    pub async fn mac_address_create(
-        &self,
-        body: &MACAddressRequest,
-    ) -> crate::Result<MACAddress> {
+    pub async fn mac_address_create(&self, body: &MACAddressRequest) -> crate::Result<MACAddress> {
         let url = format!("{}/api/dcim/mac-addresses/", self.base_url);
         self.http
             .post(&url)
@@ -729,13 +729,7 @@ mod tests {
             "tags": [],
             "custom_fields": {},
             "created": "2024-01-01T00:00:00Z",
-            "last_updated": "2024-01-01T00:00:00Z",
-            "circuit_count": 0,
-            "device_count": 0,
-            "prefix_count": 0,
-            "rack_count": 0,
-            "virtualmachine_count": 0,
-            "vlan_count": 0
+            "last_updated": "2024-01-01T00:00:00Z"
         })
     }
 
@@ -816,7 +810,9 @@ mod tests {
         Mock::given(method("GET"))
             .and(path("/api/dcim/sites/1/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(site_json(1, "Site A", "site-a")))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(site_json(1, "Site A", "site-a")),
+            )
             .mount(&server)
             .await;
 
@@ -858,7 +854,9 @@ mod tests {
             .and(path("/api/dcim/sites/"))
             .and(header("Authorization", "Token secret"))
             .and(header("Content-Type", "application/json"))
-            .respond_with(ResponseTemplate::new(201).set_body_json(site_json(5, "New Site", "new-site")))
+            .respond_with(
+                ResponseTemplate::new(201).set_body_json(site_json(5, "New Site", "new-site")),
+            )
             .mount(&server)
             .await;
 
@@ -903,7 +901,9 @@ mod tests {
         Mock::given(method("PUT"))
             .and(path("/api/dcim/sites/3/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(site_json(3, "Updated", "updated")))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(site_json(3, "Updated", "updated")),
+            )
             .mount(&server)
             .await;
 
@@ -924,7 +924,9 @@ mod tests {
         Mock::given(method("PATCH"))
             .and(path("/api/dcim/sites/4/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(site_json(4, "Patched", "patched")))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(site_json(4, "Patched", "patched")),
+            )
             .mount(&server)
             .await;
 
@@ -1370,7 +1372,9 @@ mod tests {
         Mock::given(method("GET"))
             .and(path("/api/dcim/mac-addresses/42/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(mac_json(42, "de:ad:be:ef:00:01")))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(mac_json(42, "de:ad:be:ef:00:01")),
+            )
             .mount(&server)
             .await;
 
@@ -1410,7 +1414,9 @@ mod tests {
                 "assigned_object_type": "dcim.interface",
                 "assigned_object_id": 10
             })))
-            .respond_with(ResponseTemplate::new(201).set_body_json(mac_json(5, "aa:bb:cc:dd:ee:ff")))
+            .respond_with(
+                ResponseTemplate::new(201).set_body_json(mac_json(5, "aa:bb:cc:dd:ee:ff")),
+            )
             .mount(&server)
             .await;
 
@@ -1435,7 +1441,9 @@ mod tests {
             .and(wiremock::matchers::body_json(serde_json::json!({
                 "description": "primary uplink"
             })))
-            .respond_with(ResponseTemplate::new(200).set_body_json(mac_json(5, "aa:bb:cc:dd:ee:ff")))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(mac_json(5, "aa:bb:cc:dd:ee:ff")),
+            )
             .mount(&server)
             .await;
 

@@ -151,6 +151,7 @@ pub struct BriefProvider {
     #[serde(default)]
     pub description: String,
     /// Number of circuits with this provider.
+    #[serde(default)]
     pub circuit_count: i64,
 }
 
@@ -171,6 +172,7 @@ pub struct BriefCircuitType {
     #[serde(default)]
     pub description: String,
     /// Number of circuits of this type.
+    #[serde(default)]
     pub circuit_count: i64,
 }
 
@@ -274,6 +276,7 @@ pub struct BriefVirtualCircuitType {
     #[serde(default)]
     pub description: String,
     /// Number of virtual circuits of this type.
+    #[serde(default)]
     pub virtual_circuit_count: i64,
 }
 
@@ -420,6 +423,7 @@ pub struct CircuitType {
     /// Date/time this object was last updated.
     pub last_updated: Option<json_ts::JsonTimestamp>,
     /// Number of circuits of this type.
+    #[serde(default)]
     pub circuit_count: i64,
 }
 
@@ -521,6 +525,7 @@ pub struct Provider {
     /// Date/time this object was last updated.
     pub last_updated: Option<json_ts::JsonTimestamp>,
     /// Number of circuits with this provider.
+    #[serde(default)]
     pub circuit_count: i64,
 }
 
@@ -632,6 +637,7 @@ pub struct CircuitGroup {
     /// Date/time this object was last updated.
     pub last_updated: Option<json_ts::JsonTimestamp>,
     /// Number of circuits in this group.
+    #[serde(default)]
     pub circuit_count: i64,
 }
 
@@ -744,6 +750,7 @@ pub struct VirtualCircuitType {
     /// Date/time this object was last updated.
     pub last_updated: Option<json_ts::JsonTimestamp>,
     /// Number of virtual circuits of this type.
+    #[serde(default)]
     pub virtual_circuit_count: i64,
 }
 
@@ -1482,6 +1489,7 @@ pub struct BriefRIR {
     #[serde(default)]
     pub description: String,
     /// Number of aggregates assigned to this RIR.
+    #[serde(default)]
     pub aggregate_count: i64,
 }
 
@@ -1502,6 +1510,7 @@ pub struct BriefVRF {
     #[serde(default)]
     pub description: String,
     /// Number of IP prefixes in this VRF.
+    #[serde(default)]
     pub prefix_count: i64,
 }
 
@@ -1558,8 +1567,10 @@ pub struct BriefRole {
     #[serde(default)]
     pub description: String,
     /// Number of prefixes with this role.
+    #[serde(default)]
     pub prefix_count: i64,
     /// Number of VLANs with this role.
+    #[serde(default)]
     pub vlan_count: i64,
 }
 
@@ -2017,8 +2028,10 @@ pub struct Role {
     /// Date/time this object was last updated.
     pub last_updated: Option<json_ts::JsonTimestamp>,
     /// Number of prefixes with this role.
+    #[serde(default)]
     pub prefix_count: i64,
     /// Number of VLANs with this role.
+    #[serde(default)]
     pub vlan_count: i64,
 }
 
@@ -2097,6 +2110,7 @@ pub struct BriefRegion {
     #[serde(default)]
     pub description: String,
     /// Number of sites in this region.
+    #[serde(default)]
     pub site_count: i64,
     /// Nesting depth in the region hierarchy.
     #[serde(rename = "_depth")]
@@ -2120,6 +2134,7 @@ pub struct BriefSiteGroup {
     #[serde(default)]
     pub description: String,
     /// Number of sites in this group.
+    #[serde(default)]
     pub site_count: i64,
     /// Nesting depth in the site-group hierarchy.
     #[serde(rename = "_depth")]
@@ -2185,16 +2200,22 @@ pub struct Site {
     /// Date/time this object was last updated.
     pub last_updated: Option<json_ts::JsonTimestamp>,
     /// Number of circuits terminating at this site.
+    #[serde(default)]
     pub circuit_count: i64,
     /// Number of devices installed at this site.
+    #[serde(default)]
     pub device_count: i64,
     /// Number of IP prefixes assigned to this site.
+    #[serde(default)]
     pub prefix_count: i64,
     /// Number of racks at this site.
+    #[serde(default)]
     pub rack_count: i64,
     /// Number of virtual machines at this site.
+    #[serde(default)]
     pub virtualmachine_count: i64,
     /// Number of VLANs at this site.
+    #[serde(default)]
     pub vlan_count: i64,
 }
 
@@ -2514,6 +2535,7 @@ pub struct VirtualDeviceContext {
     /// Date/time this object was last updated.
     pub last_updated: Option<json_ts::JsonTimestamp>,
     /// Number of interfaces in this VDC.
+    #[serde(default)]
     pub interface_count: i64,
 }
 
@@ -2926,6 +2948,7 @@ pub struct BriefCustomFieldChoiceSet {
     #[serde(default)]
     pub description: String,
     /// Number of choices in this set.
+    #[serde(default)]
     pub choices_count: i64,
 }
 

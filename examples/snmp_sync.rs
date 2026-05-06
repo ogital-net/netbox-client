@@ -66,13 +66,12 @@ use std::net::Ipv4Addr;
 use std::time::Duration;
 
 use async_snmp::v3::{AuthProtocol, PrivProtocol};
-use async_snmp::{Auth, Client, oid};
+use async_snmp::{oid, Auth, Client};
 use futures_util::TryStreamExt as _;
 use netbox_client::dcim::{InterfaceFilter, MACAddressFilter};
 use netbox_client::ipam::IpAddressFilter;
 use netbox_client::{
-    IpAddressPatchRequest, IpAddressRequest, InterfacePatchRequest, MACAddressRequest,
-    NetboxClient,
+    InterfacePatchRequest, IpAddressPatchRequest, IpAddressRequest, MACAddressRequest, NetboxClient,
 };
 
 // ── IF-MIB column numbers (ifTable: 1.3.6.1.2.1.2.2.1) ───────────────────────
@@ -374,8 +373,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "161".into())
         .parse()
         .expect("SNMP_PORT must be a valid port number");
-    let device_name =
-        std::env::var("NETBOX_DEVICE_NAME").expect("NETBOX_DEVICE_NAME must be set");
+    let device_name = std::env::var("NETBOX_DEVICE_NAME").expect("NETBOX_DEVICE_NAME must be set");
 
     // ── Step 1: Build SNMP client ──────────────────────────────────────────────
     let target = (snmp_host.as_str(), snmp_port);
@@ -478,10 +476,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for iface in if_map.values() {
         let Some(&nb_if) = nb_by_name.get(iface.name()) else {
-            println!(
-                "  [SKIP]  {:<28} not in NetBox",
-                iface.name()
-            );
+            println!("  [SKIP]  {:<28} not in NetBox", iface.name());
             n_iface_missing += 1;
             continue;
         };
@@ -578,8 +573,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             n_ip_created += 1;
         } else {
             let ip_obj = &existing[0];
-            let already_assigned = ip_obj.assigned_object_type.as_deref()
-                == Some("dcim.interface")
+            let already_assigned = ip_obj.assigned_object_type.as_deref() == Some("dcim.interface")
                 && ip_obj.assigned_object_id == Some(nb_if.id);
 
             if already_assigned {
@@ -650,7 +644,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:-<60}", "");
     println!("Interfaces — Updated: {n_iface_updated}  Unchanged: {n_iface_unchanged}  Not in NetBox: {n_iface_missing}");
     println!("IPs        — Created: {n_ip_created}  Reassigned: {n_ip_reassigned}  OK: {n_ip_ok}  No interface: {n_ip_no_iface}");
-    println!("MACs       — Created: {n_mac_created}  OK: {n_mac_ok}  No interface: {n_mac_no_iface}");
+    println!(
+        "MACs       — Created: {n_mac_created}  OK: {n_mac_ok}  No interface: {n_mac_no_iface}"
+    );
 
     Ok(())
 }
@@ -699,10 +695,7 @@ mod tests {
 
     #[test]
     fn mask_slash_32() {
-        assert_eq!(
-            mask_to_prefix_len(Ipv4Addr::new(255, 255, 255, 255)),
-            32
-        );
+        assert_eq!(mask_to_prefix_len(Ipv4Addr::new(255, 255, 255, 255)), 32);
     }
 
     #[test]

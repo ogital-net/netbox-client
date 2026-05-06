@@ -24,19 +24,19 @@ use std::collections::VecDeque;
 use futures_core::stream::BoxStream;
 use futures_util::stream::try_unfold;
 
+use crate::RequestBuilderExt as _;
 use crate::{
     Circuit, CircuitGroup, CircuitGroupAssignment, CircuitGroupAssignmentPatchRequest,
     CircuitGroupAssignmentRequest, CircuitGroupPatchRequest, CircuitGroupRequest,
     CircuitPatchRequest, CircuitRequest, CircuitTermination, CircuitTerminationPatchRequest,
-    CircuitTerminationRequest, CircuitType, CircuitTypePatchRequest, CircuitTypeRequest,
-    JsonValue, NetboxClient, Paginated, Provider, ProviderAccount, ProviderAccountPatchRequest,
+    CircuitTerminationRequest, CircuitType, CircuitTypePatchRequest, CircuitTypeRequest, JsonValue,
+    NetboxClient, Paginated, Provider, ProviderAccount, ProviderAccountPatchRequest,
     ProviderAccountRequest, ProviderNetwork, ProviderNetworkPatchRequest, ProviderNetworkRequest,
     ProviderPatchRequest, ProviderRequest, VirtualCircuit, VirtualCircuitPatchRequest,
     VirtualCircuitRequest, VirtualCircuitTermination, VirtualCircuitTerminationPatchRequest,
     VirtualCircuitTerminationRequest, VirtualCircuitType, VirtualCircuitTypePatchRequest,
     VirtualCircuitTypeRequest,
 };
-use crate::RequestBuilderExt as _;
 
 const PAGE_SIZE: u32 = 50;
 
@@ -482,7 +482,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.providers_list(PAGE_SIZE, offset, filter).await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<Provider> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -645,7 +648,10 @@ impl NetboxClient {
                 let page = self
                     .provider_accounts_list(PAGE_SIZE, offset, filter)
                     .await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<ProviderAccount> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -796,7 +802,10 @@ impl NetboxClient {
                 let page = self
                     .provider_networks_list(PAGE_SIZE, offset, filter)
                     .await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<ProviderNetwork> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -945,7 +954,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.circuit_types_list(PAGE_SIZE, offset, filter).await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<CircuitType> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -1105,7 +1117,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.circuits_list(PAGE_SIZE, offset, filter).await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<Circuit> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -1249,7 +1264,10 @@ impl NetboxClient {
                 let page = self
                     .circuit_terminations_list(PAGE_SIZE, offset, filter)
                     .await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<CircuitTermination> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -1418,7 +1436,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.circuit_groups_list(PAGE_SIZE, offset, filter).await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<CircuitGroup> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -1569,9 +1590,11 @@ impl NetboxClient {
                 let page = self
                     .circuit_group_assignments_list(PAGE_SIZE, offset, filter)
                     .await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
-                let mut buf: VecDeque<CircuitGroupAssignment> =
-                    page.results.into_iter().collect();
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
+                let mut buf: VecDeque<CircuitGroupAssignment> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
                     None => Ok(None),
@@ -1588,10 +1611,7 @@ impl NetboxClient {
     /// # Errors
     ///
     /// Returns `Error::Api` with status 404 if not found.
-    pub async fn circuit_group_assignment(
-        &self,
-        id: i64,
-    ) -> crate::Result<CircuitGroupAssignment> {
+    pub async fn circuit_group_assignment(&self, id: i64) -> crate::Result<CircuitGroupAssignment> {
         let url = format!(
             "{}/api/circuits/circuit-group-assignments/{id}/",
             self.base_url
@@ -1736,7 +1756,10 @@ impl NetboxClient {
                 let page = self
                     .virtual_circuit_types_list(PAGE_SIZE, offset, filter)
                     .await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<VirtualCircuitType> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -1884,8 +1907,13 @@ impl NetboxClient {
                 let Some(offset) = next_offset else {
                     return Ok(None);
                 };
-                let page = self.virtual_circuits_list(PAGE_SIZE, offset, filter).await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let page = self
+                    .virtual_circuits_list(PAGE_SIZE, offset, filter)
+                    .await?;
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<VirtualCircuit> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -2039,7 +2067,10 @@ impl NetboxClient {
                 let page = self
                     .virtual_circuit_terminations_list(PAGE_SIZE, offset, filter)
                     .await?;
-                let new_next = page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<VirtualCircuitTermination> =
                     page.results.into_iter().collect();
                 match buf.pop_front() {
@@ -2211,8 +2242,7 @@ mod tests {
             "tags": [],
             "custom_fields": {},
             "created": "2024-01-01T00:00:00Z",
-            "last_updated": "2024-01-01T00:00:00Z",
-            "circuit_count": 0
+            "last_updated": "2024-01-01T00:00:00Z"
         })
     }
 
@@ -2228,16 +2258,14 @@ mod tests {
                 "url": "https://nb.example.com/api/circuits/providers/1/",
                 "display": "Provider 1",
                 "name": "Provider 1",
-                "slug": "provider-1",
-                "circuit_count": 0
+                "slug": "provider-1"
             },
             "type": {
                 "id": 1,
                 "url": "https://nb.example.com/api/circuits/circuit-types/1/",
                 "display": "Internet",
                 "name": "Internet",
-                "slug": "internet",
-                "circuit_count": 0
+                "slug": "internet"
             },
             "status": { "value": "active", "label": "Active" },
             "description": "",
@@ -2342,9 +2370,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/circuits/providers/99/"))
-            .respond_with(ResponseTemplate::new(404).set_body_json(
-                serde_json::json!({"detail": "Not found."}),
-            ))
+            .respond_with(
+                ResponseTemplate::new(404)
+                    .set_body_json(serde_json::json!({"detail": "Not found."})),
+            )
             .mount(&server)
             .await;
 
@@ -2405,9 +2434,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("DELETE"))
             .and(path("/api/circuits/providers/999/"))
-            .respond_with(ResponseTemplate::new(404).set_body_json(
-                serde_json::json!({"detail": "Not found."}),
-            ))
+            .respond_with(
+                ResponseTemplate::new(404)
+                    .set_body_json(serde_json::json!({"detail": "Not found."})),
+            )
             .mount(&server)
             .await;
 
@@ -2510,9 +2540,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/circuits/circuits/999/"))
-            .respond_with(ResponseTemplate::new(404).set_body_json(
-                serde_json::json!({"detail": "Not found."}),
-            ))
+            .respond_with(
+                ResponseTemplate::new(404)
+                    .set_body_json(serde_json::json!({"detail": "Not found."})),
+            )
             .mount(&server)
             .await;
 
@@ -2602,8 +2633,7 @@ mod tests {
         let ct = serde_json::json!({
             "id": 1, "url": "u", "display_url": "u", "display": "Internet",
             "name": "Internet", "slug": "internet", "color": "", "description": "",
-            "comments": "", "tags": [], "created": null, "last_updated": null,
-            "circuit_count": 5
+            "comments": "", "tags": [], "created": null, "last_updated": null
         });
         Mock::given(method("GET"))
             .and(path("/api/circuits/circuit-types/"))

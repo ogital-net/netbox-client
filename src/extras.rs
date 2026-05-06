@@ -27,10 +27,8 @@ use std::collections::VecDeque;
 use futures_core::stream::BoxStream;
 use futures_util::stream::try_unfold;
 
-use crate::{
-    CustomField, CustomFieldPatchRequest, CustomFieldRequest, NetboxClient, Paginated,
-};
 use crate::RequestBuilderExt as _;
+use crate::{CustomField, CustomFieldPatchRequest, CustomFieldRequest, NetboxClient, Paginated};
 
 const PAGE_SIZE: u32 = 50;
 
@@ -131,8 +129,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.custom_fields_list(PAGE_SIZE, offset, filter).await?;
-                let new_next =
-                    page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<CustomField> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -416,9 +416,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/extras/custom-fields/999/"))
-            .respond_with(ResponseTemplate::new(404).set_body_json(
-                serde_json::json!({"detail": "Not found."}),
-            ))
+            .respond_with(
+                ResponseTemplate::new(404)
+                    .set_body_json(serde_json::json!({"detail": "Not found."})),
+            )
             .mount(&server)
             .await;
 
@@ -463,9 +464,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/extras/custom-fields/"))
-            .respond_with(ResponseTemplate::new(400).set_body_json(
-                serde_json::json!({"detail": "Invalid field type."}),
-            ))
+            .respond_with(
+                ResponseTemplate::new(400)
+                    .set_body_json(serde_json::json!({"detail": "Invalid field type."})),
+            )
             .mount(&server)
             .await;
 
@@ -551,9 +553,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("DELETE"))
             .and(path("/api/extras/custom-fields/999/"))
-            .respond_with(ResponseTemplate::new(404).set_body_json(
-                serde_json::json!({"detail": "Not found."}),
-            ))
+            .respond_with(
+                ResponseTemplate::new(404)
+                    .set_body_json(serde_json::json!({"detail": "Not found."})),
+            )
             .mount(&server)
             .await;
 

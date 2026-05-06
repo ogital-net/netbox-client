@@ -49,10 +49,10 @@ pub(crate) mod json {
     }
 }
 
-/// The JSON value type from the active backend.
-pub use json::Value as JsonValue;
 /// The JSON error type from the active backend.
 pub use json::Error as JsonError;
+/// The JSON value type from the active backend.
+pub use json::Value as JsonValue;
 
 // ── Imports ────────────────────────────────────────────────────────────────
 

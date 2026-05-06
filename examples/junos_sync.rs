@@ -176,10 +176,7 @@ fn parse_interface_xml(xml: &str) -> Vec<JunosInterface> {
 
             Ok(Event::Eof) => break,
             Err(e) => {
-                eprintln!(
-                    "XML parse error at byte {}: {e}",
-                    reader.buffer_position()
-                );
+                eprintln!("XML parse error at byte {}: {e}", reader.buffer_position());
                 break;
             }
             _ => {}
@@ -325,7 +322,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let patch = InterfacePatchRequest {
             description: desc_drift.then(|| want_desc.to_owned()),
             enabled: enabled_drift.then_some(junos_if.admin_up),
-            speed: if speed_drift { junos_if.speed_kbps } else { None },
+            speed: if speed_drift {
+                junos_if.speed_kbps
+            } else {
+                None
+            },
             ..Default::default()
         };
 
@@ -350,9 +351,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("{:-<60}", "");
-    println!(
-        "Done.  Updated: {n_updated}  Unchanged: {n_unchanged}  Not in NetBox: {n_missing}"
-    );
+    println!("Done.  Updated: {n_updated}  Unchanged: {n_unchanged}  Not in NetBox: {n_missing}");
 
     Ok(())
 }

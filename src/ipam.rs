@@ -29,12 +29,12 @@ use std::collections::VecDeque;
 use futures_core::stream::BoxStream;
 use futures_util::stream::try_unfold;
 
+use crate::RequestBuilderExt as _;
 use crate::{
     Aggregate, AggregatePatchRequest, AggregateRequest, IpAddress, IpAddressPatchRequest,
     IpAddressRequest, NetboxClient, Paginated, Prefix, PrefixPatchRequest, PrefixRequest, Role,
     RolePatchRequest, RoleRequest,
 };
-use crate::RequestBuilderExt as _;
 
 const PAGE_SIZE: u32 = 50;
 
@@ -356,8 +356,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.ip_addresses_list(PAGE_SIZE, offset, filter).await?;
-                let new_next =
-                    page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<IpAddress> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -514,8 +516,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.prefixes_list(PAGE_SIZE, offset, filter).await?;
-                let new_next =
-                    page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<Prefix> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -664,8 +668,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.aggregates_list(PAGE_SIZE, offset, filter).await?;
-                let new_next =
-                    page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<Aggregate> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -819,8 +825,10 @@ impl NetboxClient {
                     return Ok(None);
                 };
                 let page = self.roles_list(PAGE_SIZE, offset, filter).await?;
-                let new_next =
-                    page.next.is_some().then_some(offset + page.results.len() as u32);
+                let new_next = page
+                    .next
+                    .is_some()
+                    .then_some(offset + page.results.len() as u32);
                 let mut buf: VecDeque<Role> = page.results.into_iter().collect();
                 match buf.pop_front() {
                     Some(item) => Ok(Some((item, (new_next, buf)))),
@@ -999,8 +1007,7 @@ mod tests {
                 "display": "ARIN",
                 "name": "ARIN",
                 "slug": "arin",
-                "description": "",
-                "aggregate_count": 5
+                "description": ""
             },
             "tenant": null,
             "date_added": null,
@@ -1029,9 +1036,7 @@ mod tests {
             "tags": [],
             "custom_fields": {},
             "created": "2024-01-01T00:00:00Z",
-            "last_updated": "2024-01-01T00:00:00Z",
-            "prefix_count": 0,
-            "vlan_count": 0
+            "last_updated": "2024-01-01T00:00:00Z"
         })
     }
 
@@ -1113,8 +1118,7 @@ mod tests {
             .and(path("/api/ipam/ip-addresses/1/"))
             .and(header("Authorization", "Token secret"))
             .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(ip_address_json(1, "192.0.2.1/24")),
+                ResponseTemplate::new(200).set_body_json(ip_address_json(1, "192.0.2.1/24")),
             )
             .mount(&server)
             .await;
@@ -1158,8 +1162,7 @@ mod tests {
             .and(header("Authorization", "Token secret"))
             .and(header("Content-Type", "application/json"))
             .respond_with(
-                ResponseTemplate::new(201)
-                    .set_body_json(ip_address_json(3, "10.0.0.1/24")),
+                ResponseTemplate::new(201).set_body_json(ip_address_json(3, "10.0.0.1/24")),
             )
             .mount(&server)
             .await;
@@ -1204,8 +1207,7 @@ mod tests {
             .and(path("/api/ipam/ip-addresses/1/"))
             .and(header("Authorization", "Token secret"))
             .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(ip_address_json(1, "10.0.0.1/24")),
+                ResponseTemplate::new(200).set_body_json(ip_address_json(1, "10.0.0.1/24")),
             )
             .mount(&server)
             .await;
@@ -1227,8 +1229,7 @@ mod tests {
             .and(path("/api/ipam/ip-addresses/1/"))
             .and(header("Authorization", "Token secret"))
             .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(ip_address_json(1, "10.0.0.1/24")),
+                ResponseTemplate::new(200).set_body_json(ip_address_json(1, "10.0.0.1/24")),
             )
             .mount(&server)
             .await;
@@ -1352,9 +1353,7 @@ mod tests {
         Mock::given(method("GET"))
             .and(path("/api/ipam/prefixes/1/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(prefix_json(1, "10.0.0.0/8")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(prefix_json(1, "10.0.0.0/8")))
             .mount(&server)
             .await;
 
@@ -1379,7 +1378,9 @@ mod tests {
 
         let client = NetboxClient::new(server.uri(), "secret").unwrap();
         let err = client.prefix(999).await.unwrap_err();
-        assert!(matches!(err, crate::Error::Api { status, .. } if status == reqwest::StatusCode::NOT_FOUND));
+        assert!(
+            matches!(err, crate::Error::Api { status, .. } if status == reqwest::StatusCode::NOT_FOUND)
+        );
     }
 
     #[tokio::test]
@@ -1435,9 +1436,7 @@ mod tests {
         Mock::given(method("PUT"))
             .and(path("/api/ipam/prefixes/1/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(prefix_json(1, "10.0.0.0/8")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(prefix_json(1, "10.0.0.0/8")))
             .mount(&server)
             .await;
 
@@ -1457,9 +1456,7 @@ mod tests {
         Mock::given(method("PATCH"))
             .and(path("/api/ipam/prefixes/1/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(prefix_json(1, "10.0.0.0/8")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(prefix_json(1, "10.0.0.0/8")))
             .mount(&server)
             .await;
 
@@ -1583,9 +1580,7 @@ mod tests {
         Mock::given(method("GET"))
             .and(path("/api/ipam/aggregates/1/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(aggregate_json(1, "10.0.0.0/8")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(aggregate_json(1, "10.0.0.0/8")))
             .mount(&server)
             .await;
 
@@ -1610,7 +1605,9 @@ mod tests {
 
         let client = NetboxClient::new(server.uri(), "secret").unwrap();
         let err = client.aggregate(999).await.unwrap_err();
-        assert!(matches!(err, crate::Error::Api { status, .. } if status == reqwest::StatusCode::NOT_FOUND));
+        assert!(
+            matches!(err, crate::Error::Api { status, .. } if status == reqwest::StatusCode::NOT_FOUND)
+        );
     }
 
     #[tokio::test]
@@ -1667,9 +1664,7 @@ mod tests {
         Mock::given(method("PUT"))
             .and(path("/api/ipam/aggregates/1/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(aggregate_json(1, "10.0.0.0/8")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(aggregate_json(1, "10.0.0.0/8")))
             .mount(&server)
             .await;
 
@@ -1690,9 +1685,7 @@ mod tests {
         Mock::given(method("PATCH"))
             .and(path("/api/ipam/aggregates/1/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(aggregate_json(1, "10.0.0.0/8")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(aggregate_json(1, "10.0.0.0/8")))
             .mount(&server)
             .await;
 
@@ -1815,9 +1808,11 @@ mod tests {
         Mock::given(method("GET"))
             .and(path("/api/ipam/roles/1/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(role_json(1, "Management", "management")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(role_json(
+                1,
+                "Management",
+                "management",
+            )))
             .mount(&server)
             .await;
 
@@ -1842,7 +1837,9 @@ mod tests {
 
         let client = NetboxClient::new(server.uri(), "secret").unwrap();
         let err = client.role(999).await.unwrap_err();
-        assert!(matches!(err, crate::Error::Api { status, .. } if status == reqwest::StatusCode::NOT_FOUND));
+        assert!(
+            matches!(err, crate::Error::Api { status, .. } if status == reqwest::StatusCode::NOT_FOUND)
+        );
     }
 
     #[tokio::test]
@@ -1853,10 +1850,11 @@ mod tests {
             .and(path("/api/ipam/roles/"))
             .and(header("Authorization", "Token secret"))
             .and(header("Content-Type", "application/json"))
-            .respond_with(
-                ResponseTemplate::new(201)
-                    .set_body_json(role_json(4, "Infrastructure", "infrastructure")),
-            )
+            .respond_with(ResponseTemplate::new(201).set_body_json(role_json(
+                4,
+                "Infrastructure",
+                "infrastructure",
+            )))
             .mount(&server)
             .await;
 
@@ -1901,8 +1899,7 @@ mod tests {
             .and(path("/api/ipam/roles/1/"))
             .and(header("Authorization", "Token secret"))
             .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(role_json(1, "Updated", "updated")),
+                ResponseTemplate::new(200).set_body_json(role_json(1, "Updated", "updated")),
             )
             .mount(&server)
             .await;
@@ -1924,9 +1921,11 @@ mod tests {
         Mock::given(method("PATCH"))
             .and(path("/api/ipam/roles/1/"))
             .and(header("Authorization", "Token secret"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(role_json(1, "Management", "management")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(role_json(
+                1,
+                "Management",
+                "management",
+            )))
             .mount(&server)
             .await;
 
