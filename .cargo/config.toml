@@ -1,6 +1,0 @@
-[env]
-# Wiremock tests create real TCP listeners. Under high parallelism the OS
-# recycles ports from recently-finished tests before in-flight connections
-# resolve, producing spurious "Connection refused" / "IncompleteMessage"
-# failures. RUST_TEST_THREADS caps the concurrency to prevent this.
-RUST_TEST_THREADS = "4"
