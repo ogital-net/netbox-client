@@ -151,6 +151,12 @@ pub struct PrefixFilter {
     pub present_in_vrf: Option<String>,
     /// Filter to prefixes present in VRF ID.
     pub present_in_vrf_id: Option<i64>,
+    /// Prefixes which contain this prefix or IP.
+    pub contains: Option<String>,
+    /// Filter by scope object IDs (e.g. site/region/location IDs).
+    pub scope_id: Vec<i64>,
+    /// Filter by scope content type (e.g. `dcim.site`, `dcim.region`).
+    pub scope_type: Option<String>,
     /// Filter by tag.
     pub tag: Vec<String>,
 }
@@ -196,6 +202,15 @@ impl PrefixFilter {
         }
         if let Some(v) = self.present_in_vrf_id {
             p.push(("present_in_vrf_id".into(), v.to_string()));
+        }
+        if let Some(v) = &self.contains {
+            p.push(("contains".into(), v.clone()));
+        }
+        for v in &self.scope_id {
+            p.push(("scope_id".into(), v.to_string()));
+        }
+        if let Some(v) = &self.scope_type {
+            p.push(("scope_type".into(), v.clone()));
         }
         for v in &self.tag {
             p.push(("tag".into(), v.clone()));
